@@ -14,10 +14,12 @@ import (
 	bb "github.com/SpaceLeap/go-beaglebone"
 )
 
-var running bool
+var (
+	running bool
 
-// to sync alive time stamps
-var mtx sync.Mutex
+	aliveTimer    time.Time
+	aliveTimerMtx sync.Mutex
+)
 
 func ShowHelp() {
 	fmt.Println("exit                          Terminates test application")
@@ -40,7 +42,7 @@ func BytePassThru(run *bool, source io.Reader, target io.Writer, id string) {
 	}
 }
 
-func Passthru(address *net.UDPAddr, aliveTimer *time.Time, isLandingEngaged *bool) {
+func Passthru(address *net.UDPAddr, isLandingEngaged *bool) {
 
 	source, err := bb.NewUART(bb.UART2, bb.UART_BAUD_57600, bb.UART_BYTESIZE_8, bb.UART_PARITY_NONE, bb.UART_STOPBITS_1)
 	if err != nil {
@@ -56,12 +58,12 @@ func Passthru(address *net.UDPAddr, aliveTimer *time.Time, isLandingEngaged *boo
 
 	for passthru {
 
-		mtx.Lock()
+		aliveTimerMtx.Lock()
 		if time.Now().Sub(*aliveTimer).Seconds() > 30 {
 			fmt.Println("Stopping, no alives for 30secs")
 			passthru = false
 		}
-		mtx.Unlock()
+		aliveTimerMtx.Unlock()
 	}
 
 	client.Close()
@@ -74,8 +76,6 @@ func ConnectionServer() {
 		//IP:   net.ParseIP("192.168.42.1"),
 		IP: net.ParseIP("10.0.0.68"),
 	}
-
-	var aliveTimer time.Time
 
 	isLandingEngaged := false
 
@@ -98,9 +98,9 @@ func ConnectionServer() {
 
 				// ------ Command: alive -------
 				if command == "alive" {
-					mtx.Lock()
+					aliveTimerMtx.Lock()
 					aliveTimer = time.Now()
-					mtx.Unlock()
+					aliveTimerMtx.Unlock()
 
 					// ------ Command: interrupt -------
 				} else if command == "interrupt" {
@@ -113,10 +113,10 @@ func ConnectionServer() {
 					fmt.Println("Starting landing sequence")
 					// Start GPS passthru
 					isLandingEngaged = true
-					mtx.Lock()
+					aliveTimerMtx.Lock()
 					aliveTimer = time.Now()
-					mtx.Unlock()
-					go Passthru(remoteAddress, &aliveTimer, &isLandingEngaged)
+					aliveTimerMtx.Unlock()
+					go Passthru(remoteAddress, &isLandingEngaged)
 				}
 			}
 		}
