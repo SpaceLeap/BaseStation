@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -22,24 +23,21 @@ func ShowHelp() {
 	fmt.Println("exit                          Terminates test application")
 }
 
-func BytePassThru(run *bool, source *bb.UART, target *net.UDPConn, id string) {
-	go func() {
+func BytePassThru(run *bool, source io.Reader, target io.Writer, id string) {
+	buffer := []byte{0}
 
-		buffer := []byte{0}
-
-		for *run {
-			_, err := source.Read(buffer)
+	for *run {
+		_, err := source.Read(buffer)
+		if err != nil {
+			fmt.Println("Read error: ", err)
+		} else {
+			fmt.Println(id, ": ", buffer[0])
+			_, err = target.Write(buffer)
 			if err != nil {
-				fmt.Println("Read error: ", err)
-			} else {
-				fmt.Println(id, ": ", buffer[0])
-				_, err = target.Write(buffer)
-				if err != nil {
-					fmt.Println("Write error: ", err)
-				}
+				fmt.Println("Write error: ", err)
 			}
 		}
-	}()
+	}
 }
 
 func Passthru(address *net.UDPAddr, aliveTimer *time.Time, isLandingEngaged *bool) {
@@ -54,7 +52,7 @@ func Passthru(address *net.UDPAddr, aliveTimer *time.Time, isLandingEngaged *boo
 	}
 
 	passthru := true
-	BytePassThru(&passthru, source, client, "GPS->UDP")
+	go BytePassThru(&passthru, source, client, "GPS->UDP")
 
 	for passthru {
 
