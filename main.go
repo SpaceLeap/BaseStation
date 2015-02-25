@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	bb "github.com/SpaceLeap/go-beaglebone"
+	goserial "github.com/ungerik/goserial"
 )
 
 var (
@@ -25,48 +25,53 @@ func ShowHelp() {
 	fmt.Println("exit                          Terminates test application")
 }
 
-func BytePassThru(run *bool, source io.Reader, target io.Writer, id string) {
+func BytePassThru(run *bool, source io.Reader, address *net.UDPAddr, id string) {
+
+	target, err := net.DialUDP("udp", nil, address)
+	if err != nil {
+		panic(err)
+	}
+
 	buffer := []byte{0}
+	target.SetWriteBuffer(1)
 
 	for *run {
 		_, err := source.Read(buffer)
-		if err != nil {
-			fmt.Println("Read error: ", err)
-		} else {
-			fmt.Println(id, ": ", buffer[0])
-			_, err = target.Write(buffer)
+		if err == nil {
+			count, err := target.Write(buffer)
 			if err != nil {
 				fmt.Println("Write error: ", err)
 			}
+			fmt.Println(id, ": ", buffer[0], " (wrote ", count, " bytes)")
 		}
 	}
+
+	target.Close()
 }
 
 func Passthru(address *net.UDPAddr, isLandingEngaged *bool) {
 
-	source, err := bb.NewUART(bb.UART2, bb.UART_BAUD_57600, bb.UART_BYTESIZE_8, bb.UART_PARITY_NONE, bb.UART_STOPBITS_1)
+	config := &goserial.Config{Name: "/dev/ttyUSB0", Baud: 57600}
+	source, err := goserial.OpenPort(config)
 	if err != nil {
 		panic(err)
 	}
-	client, err := net.DialUDP("udp", nil, address)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println("Routing to " + address.String())
 
 	passthru := true
-	go BytePassThru(&passthru, source, client, "GPS->UDP")
+	go BytePassThru(&passthru, source, address, "GPS->UDP")
 
 	for passthru {
 
 		aliveTimerMtx.Lock()
-		if time.Now().Sub(*aliveTimer).Seconds() > 30 {
+		if time.Now().Sub(aliveTimer).Seconds() > 30 {
 			fmt.Println("Stopping, no alives for 30secs")
 			passthru = false
 		}
 		aliveTimerMtx.Unlock()
 	}
 
-	client.Close()
+	source.Close()
 	*isLandingEngaged = false
 }
 
