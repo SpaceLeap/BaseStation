@@ -12,6 +12,7 @@ import (
 	"time"
 
 	goserial "github.com/ungerik/goserial"
+	//goserial "github.com/tarm/goserial"
 )
 
 var (
@@ -51,8 +52,9 @@ func BytePassThru(run *bool, source io.Reader, address *net.UDPAddr, id string) 
 
 func Passthru(address *net.UDPAddr, isLandingEngaged *bool) {
 
-	config := &goserial.Config{Name: "/dev/ttyUSB0", Baud: 57600}
-	source, err := goserial.OpenPort(config)
+	//c := &goserial.Config{Name: "/dev/ttyUSB0", Baud: 57600}
+	//source, err := goserial.OpenPort(c)
+	source, err := goserial.OpenDefault("/dev/ttyUSB0", 57600, time.Second*10)
 	if err != nil {
 		panic(err)
 	}
