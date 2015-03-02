@@ -54,7 +54,8 @@ func Passthru(address *net.UDPAddr, isLandingEngaged *bool) {
 
 	//c := &goserial.Config{Name: "/dev/ttyUSB0", Baud: 57600}
 	//source, err := goserial.OpenPort(c)
-	source, err := goserial.OpenDefault("/dev/ttyUSB0", 57600, time.Second*10)
+	//source, err := goserial.OpenDefault("/dev/ttyUSB0", 57600, time.Second*10)
+	source, err := goserial.OpenDefault("/dev/ttyO1", 57600, time.Second*10)
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +82,7 @@ func ConnectionServer() {
 	addr := net.UDPAddr{
 		Port: 4242,
 		//IP:   net.ParseIP("192.168.42.1"),
-		IP: net.ParseIP("10.0.0.68"),
+		IP: net.ParseIP("0.0.0.0"),
 	}
 
 	isLandingEngaged := false
